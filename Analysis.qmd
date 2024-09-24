@@ -39,6 +39,12 @@ qqnorm(residuals(model)); qqline(residuals(model))
 ```
 
 ```{r}
+random_effects <- ranef(model)$ParticipantID[[1]]
+qqnorm(random_effects)
+qqline(random_effects, col = "blue")
+```
+
+```{r}
 library(pbkrtest)
 
 model1 <- lmer(REE ~ ICUorSDU + (1 | ParticipantID), data = x)
@@ -83,7 +89,7 @@ The fixed effects show how the predictors influence the REE after accounting for
 
 The correlation matrix describes how strongly the effects of the predictors are correlated with each other, which can impact the precision of the estimates: - **ICUorSDUSDU** and **ventilator1** are somewhat correlated (0.684), suggesting that adjustments for one affect estimates for the other.
 
----
+------------------------------------------------------------------------
 
 Overall, the model suggests significant effects of ventilator use and obesity on REE, with ventilator use reducing REE and obesity increasing it. The variability among participants is also significant, indicating substantial individual differences in REE that the fixed effects alone do not fully explain. This model provides insights into factors affecting energy expenditure in critically ill patients, which can be crucial for nutritional and clinical management.
 
