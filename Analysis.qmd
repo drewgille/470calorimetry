@@ -1,4 +1,5 @@
 ```{r}
+load("~/470calorimetry/x.RData")
 x$ICUorSDU <- as.factor(x$ICUorSDU)
 x$ventilator <- as.factor(x$ventilator)
 x$obese <- as.factor(x$obese)
