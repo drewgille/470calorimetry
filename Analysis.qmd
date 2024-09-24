@@ -1,0 +1,97 @@
+```{r}
+x$ICUorSDU <- as.factor(x$ICUorSDU)
+x$ventilator <- as.factor(x$ventilator)
+x$obese <- as.factor(x$obese)
+x$Sex <- as.factor(x$Sex)
+x$Race <- as.factor(x$Race)
+x$TypeofSurgery <- as.factor(x$TypeofSurgery)
+
+```
+
+```{r}
+duplicated_indices <- which(names(x) == "MSJ")
+names(x)[duplicated_indices[2]] <- "MSJ_2"
+```
+
+```{r}
+summary(x)
+library(ggplot2)
+# Plotting REE distributions by obesity status
+ggplot(x, aes(x = obese, y = REE)) + geom_boxplot() + labs(title = "REE by Obesity Status")
+
+```
+
+```{r}
+library(Matrix)
+library(lme4)
+
+model <- lmer(REE ~ ICUorSDU + ventilator + obese + (1 | ParticipantID), data = x)
+summary(model)
+
+
+```
+
+```{r}
+plot(residuals(model))
+qqnorm(residuals(model)); qqline(residuals(model))
+
+```
+
+```{r}
+library(pbkrtest)
+
+model1 <- lmer(REE ~ ICUorSDU + (1 | ParticipantID), data = x)
+model2 <- update(model1, .~. + ventilator + obese)
+
+# Compare 
+test <- KRmodcomp(model1, model2)
+summary(test)
+
+```
+
+### Investigating Repeated Measurements Structure
+
+The mixed-effects model (`lmer(REE ~ ICUorSDU + ventilator + obese + (1 | ParticipantID), data = x)`) is designed to handle the repeated measurements structure. By including `(1 | ParticipantID)` as a random effect:
+
+-   **ParticipantID as a Random Effect**: This accounts for variability in REE that can be attributed to individual differences between participants, acknowledging that multiple observations from the same participant are not independent.
+
+### REML Criterion at Convergence:
+
+-   **457**: This is the Restricted Maximum Likelihood (REML) criterion value at the point where the model estimation process converged. The REML criterion is used in mixed-effects models to estimate the variance components while factoring out the fixed effects. A lower REML value often indicates a better fit, but it is mainly used for comparing nested models.
+
+### Scaled Residuals:
+
+These show the distribution of the residuals (difference between observed and predicted values) after fitting the model: - **Min**: -2.0390 - **1Q (First Quartile)**: -0.5295 - **Median**: -0.1412 - **3Q (Third Quartile)**: 0.5769 - **Max**: 2.1944
+
+The residuals seem quite symmetric around zero, with the median closer to zero, indicating that the model does not have systematic bias. However, the spread from min to max suggests some outliers or extreme values.
+
+### Random Effects:
+
+-   **Groups**: ParticipantID
+-   **Name**: Intercept
+-   **Variance**: 18840
+-   **Std.Dev.**: 137.3
+
+The random effects table indicates that there is lots of variation between participants: - **Variance (Intercept for ParticipantID)**: 18840 - This shows the variance in REE attributable to differences between participants (intercept variation). - **Residual Variance**: 96644 - This is the variance of the residuals, representing the variation in REE not explained by the model.
+
+### Fixed Effects:
+
+The fixed effects show how the predictors influence the REE after accounting for the random effects. - **(Intercept)**: 1515.99 ± 148.72 (t = 10.193) - This is the estimated baseline REE when all other variables are at their reference levels (e.g., ICUorSDU = ICU, ventilator = off, obese = no). - **ICUorSDUSDU**: 89.51 ± 153.56 (t = 0.583) - This suggests a slight increase in REE for participants in the SDU compared to the ICU, although this effect is not statistically significant given the t-value. - **ventilator1**: -340.56 ± 165.10 (t = -2.063) - Indicates a significant decrease in REE when participants are on ventilators. - **obese1**: 488.07 ± 144.44 (t = 3.379) - Shows a significant increase in REE for obese participants.
+
+### Correlation of Fixed Effects:
+
+The correlation matrix describes how strongly the effects of the predictors are correlated with each other, which can impact the precision of the estimates: - **ICUorSDUSDU** and **ventilator1** are somewhat correlated (0.684), suggesting that adjustments for one affect estimates for the other.
+
+---
+
+Overall, the model suggests significant effects of ventilator use and obesity on REE, with ventilator use reducing REE and obesity increasing it. The variability among participants is also significant, indicating substantial individual differences in REE that the fixed effects alone do not fully explain. This model provides insights into factors affecting energy expenditure in critically ill patients, which can be crucial for nutritional and clinical management.
+
+**Model Diagnostics**
+
+```{r}
+library(lattice)
+qqmath(resid(model), main = "QQ Plot of Residuals")  # Checking for normality
+plot(resid(model) ~ fitted(model), main = "Residuals vs Fitted Values")  # Checking for homogeneity
+
+
+```
