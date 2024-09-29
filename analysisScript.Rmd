@@ -1,0 +1,71 @@
+
+
+```{r}
+#data
+load("~/470calorimetry/x.RData")
+```
+
+
+```{r}
+#packages
+library(lme4)
+library(pbkrtest)
+```
+
+
+```{r}
+#Fit models (with and without icu)
+REE.icu0<-lmer(REE~(1|ParticipantID),data=x)
+REE.icu1<-lmer(REE~ICUorSDU+(1|ParticipantID),data=x)
+
+#QQ Plot
+re.out<-ranef(REE.icu1)
+re.out<-re.out$ParticipantID[[1]]
+err.out<-residuals(REE.icu1)
+par(mfrow=c(1,2),las=1,cex.axis=1.0,cex.lab=1.0,
+    cex.sub=1.5,pch=16,cex=0.5,cex.main=1.25)
+qqnorm(re.out,main="QQ Plot of ICU Analysis Patient REs\n REE Analysis")
+abline(a=0,b=sd(re.out),lwd=2,col=2)
+qqnorm(err.out,main="QQ Plot of ICU Analysis Residuals\n REE Analysis")
+abline(a=0,b=sd(err.out),lwd=2,col=2)
+
+#Kenward-Roger (~icu+(1|id) vs ~(1|id))
+
+REE.icu.kr<-KRmodcomp(REE.icu0,REE.icu1)
+REE.icu.kr
+nd0<-expand.grid(ICUorSDU="SDU",ParticipantID="L0000")
+REE.icu.Fit0<-predict(REE.icu0,re.form=NA,se.fit=TRUE,newdata=nd0)
+nd1<-expand.grid(ICUorSDU=c("SDU","ICU"),ParticipantID="L0000")
+REE.icu.Fit1<-predict(REE.icu1,re.form=NA,se.fit=TRUE,newdata=nd1)
+```
+
+
+```{r}
+#Full model (icu and obesity)
+REE.icu.obesity<-lmer(REE~ICUorSDU + obese + (1|ParticipantID),data=x)
+
+#QQ Plot
+re.out<-ranef(REE.icu.obesity)
+re.out<-re.out$ParticipantID[[1]]
+err.out<-residuals(REE.icu.obesity)
+par(mfrow=c(1,2),las=1,cex.axis=1.0,cex.lab=1.0, cex.sub=1.5,pch=16,cex=0.5,cex.main=1.25)
+qqnorm(re.out,main="QQ Plot of ICU+Obese Analysis Patient REs\n REE Analysis")
+abline(a=0,b=sd(re.out),lwd=2,col=2)
+qqnorm(err.out,main="QQ Plot of ICU+Obese Analysis Residuals\n REE Analysis")
+abline(a=0,b=sd(err.out),lwd=2,col=2)
+
+#Kenward-Roger (~icu+obesity(1|id) vs ~icu+(1|id))
+REEicu.kr<-KRmodcomp(REE.icu.obesity,REE.icu1)
+nd2<-expand.grid(ICUorSDU=c("SDU","ICU"), obese=c(0,1), ParticipantID="L0000")
+REE.icu.obesity.Fit2<-predict(REE.icu.obesity,re.form=NA,se.fit=TRUE,newdata=nd2)
+summary(REEicu.kr)
+```
+
+
+```{r}
+#Kenward-Roger (~icu+obesity(1|id) vs ~obesity+(1|id))
+REEicu.kr<-KRmodcomp(REE.icu.obesity,REE.icu1)
+nd2<-expand.grid(ICUorSDU=c("SDU","ICU"), obese=c(0,1), ParticipantID="L0000")
+REE.icu.obesity.Fit2<-predict(REE.icu.obesity,re.form=NA,se.fit=TRUE,newdata=nd2)
+```
+
