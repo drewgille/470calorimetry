@@ -5,46 +5,58 @@
 load("~/470calorimetry/x.RData")
 ```
 
-
 ```{r}
 #packages
 library(lme4)
 library(pbkrtest)
+library(xtable)
+```
+
+```{r}
+rownames(x)<-as.character(1:nrow(x))
+tabl1<-x[,c("ParticipantID","Measurement","REE","REEperkg","BMI","obese",
+           "ventilator","ICUorSDU")]
+colnames(tabl1)<-c("ID","Measurement","REE","REEperKG","BMI","Obese",
+                 "Ventilator","ICUorSDU")
+xtabl1<- xtable(tabl1,caption="Calorimetry data structured in `long format' for mixed model analysis.",
+               digits=c(0,0,0,0,2,2,0,0,0))
+label(xtabl1)<-"tabl:data"
+print(xtabl1,scalebox=0.7)
+```
+
+
+\subsection{Location (ICU/SDU) Analysis}
+
+\subsubsection{Resting Energy Expenditure (REE)}
+
+In this section, we fit three new LMMs to help us find overall and ICU/SDU status specific estimates for mean REE as well as test for a difference in REE between ICU and SDU patients. The first model includes just participant ID as a random effect ((\texttt{REE$\sim$(1|ParticipantID)} as an \texttt{R}
+model formula). The second model includes ICU/SDU status as a fixed effect, and participant ID as a random effect ((\texttt{REE$\sim$ICUorSDU+(1|ParticipantID)} as an \texttt{R}
+model formula). The third model includes obesity and ICU/SDU status as fixed effects, and participant ID as a random effect ((\texttt{REE$\sim$obese+ICUorSDU(1|ParticipantID)} as an \texttt{R}
+model formula).
+
+```{r}
+REE.icu0<-lmer(REE~(1|ParticipantID),data=x)
+REE.icu1<-lmer(REE~ICUorSDU+(1|ParticipantID),data=x)
+REE.icu.obesity<-lmer(REE~ICUorSDU + obese + (1|ParticipantID),data=x)
 ```
 
 
 ```{r}
-#Fit models (with and without icu)
-REE.icu0<-lmer(REE~(1|ParticipantID),data=x)
-REE.icu1<-lmer(REE~ICUorSDU+(1|ParticipantID),data=x)
+Again, we assume that the error and random effects are approximately normally distributed, and we will use Q--Q plots to check for violations.
+```
 
-#QQ Plot
+
+```{r}
 re.out<-ranef(REE.icu1)
 re.out<-re.out$ParticipantID[[1]]
 err.out<-residuals(REE.icu1)
 par(mfrow=c(1,2),las=1,cex.axis=1.0,cex.lab=1.0,
-    cex.sub=1.5,pch=16,cex=0.5,cex.main=1.25)
+   cex.sub=1.5,pch=16,cex=0.5,cex.main=1.25)
 qqnorm(re.out,main="QQ Plot of ICU Analysis Patient REs\n REE Analysis")
 abline(a=0,b=sd(re.out),lwd=2,col=2)
 qqnorm(err.out,main="QQ Plot of ICU Analysis Residuals\n REE Analysis")
 abline(a=0,b=sd(err.out),lwd=2,col=2)
 
-#Kenward-Roger (~icu+(1|id) vs ~(1|id))
-
-REE.icu.kr<-KRmodcomp(REE.icu0,REE.icu1)
-REE.icu.kr
-nd0<-expand.grid(ICUorSDU="SDU",ParticipantID="L0000")
-REE.icu.Fit0<-predict(REE.icu0,re.form=NA,se.fit=TRUE,newdata=nd0)
-nd1<-expand.grid(ICUorSDU=c("SDU","ICU"),ParticipantID="L0000")
-REE.icu.Fit1<-predict(REE.icu1,re.form=NA,se.fit=TRUE,newdata=nd1)
-```
-
-
-```{r}
-#Full model (icu and obesity)
-REE.icu.obesity<-lmer(REE~ICUorSDU + obese + (1|ParticipantID),data=x)
-
-#QQ Plot
 re.out<-ranef(REE.icu.obesity)
 re.out<-re.out$ParticipantID[[1]]
 err.out<-residuals(REE.icu.obesity)
@@ -54,18 +66,51 @@ abline(a=0,b=sd(re.out),lwd=2,col=2)
 qqnorm(err.out,main="QQ Plot of ICU+Obese Analysis Residuals\n REE Analysis")
 abline(a=0,b=sd(err.out),lwd=2,col=2)
 
-#Kenward-Roger (~icu+obesity(1|id) vs ~icu+(1|id))
-REEicu.kr<-KRmodcomp(REE.icu.obesity,REE.icu1)
-nd2<-expand.grid(ICUorSDU=c("SDU","ICU"), obese=c(0,1), ParticipantID="L0000")
-REE.icu.obesity.Fit2<-predict(REE.icu.obesity,re.form=NA,se.fit=TRUE,newdata=nd2)
-summary(REEicu.kr)
+REEicu.kr<-KRmodcomp(REE.icu0,REE.icu1)
+REEicu.kr
+ndi0<-expand.grid(ICUorSDU="SDU",ParticipantID="L0000")
+REEicuFit0<-predict(REE.icu0,re.form=NA,se.fit=TRUE,newdata=ndi0)
+ndi1<-expand.grid(ICUorSDU=c("SDU","ICU"),ParticipantID="L0000")
+REEicuFit1<-predict(REE.icu1,re.form=NA,se.fit=TRUE,newdata=ndi1)
 ```
+
+{\textbf{Findings: REE by ICU/SDU Status.}}  We use the LMM that includes
+ICU/SDU status as a main effect and patient ID as a random effect to estimate
+ICU/SDU status specific mean REE.  We estimate the mean REE among SDU
+patients to be \rinline{round(REEicuFit1$fit[1],2)} (SE =
+\rinline{round(REEicuFit1$se.fit[1],2)}) and among ICU patients
+to be \rinline{round(REEicuFit1$fit[2],2)} (SE =
+\rinline{round(REEicuFit1$se.fit[2],2)}).  We use the
+Kenward--Roger adjusted F--test comparing the null model to the model with ICU/SDU status as a fixed effect to test for a difference in REE by ICU/SDU status.  This results in a p--value of
+\rinline{REEicu.kr$stats$p.value}.
 
 
 ```{r}
-#Kenward-Roger (~icu+obesity(1|id) vs ~obesity+(1|id))
-REEicu.kr<-KRmodcomp(REE.icu.obesity,REE.icu1)
-nd2<-expand.grid(ICUorSDU=c("SDU","ICU"), obese=c(0,1), ParticipantID="L0000")
-REE.icu.obesity.Fit2<-predict(REE.icu.obesity,re.form=NA,se.fit=TRUE,newdata=nd2)
+ndio0<-expand.grid(ICUorSDU=c("SDU","ICU"),obese = c(0, 1), ParticipantID="L0000")
+REEicuobesityFit1<-predict(REE.icu.obesity,re.form=NA,se.fit=TRUE,newdata=ndio0)
 ```
+
+{\textbf{Findings: REE by ICU/SDU and Obesity Status.}}  We use the LMM that includes ICU/SDU status and obesity status as main effects and patient ID as a random effect to estimate ICU/SDU and obesity status--specific mean REE.  We estimate the mean REE among non--obese patients in the SDU to be \rinline{round(REEicuobesityFit1$fit[1],2)} (SE = \rinline{round(REEicuobesityFit1$se.fit[1],2)}). Among non--obese patients in the ICU, we estimate the mean REE to be \rinline{round(REEicuobesityFit1$fit[2],2)} (SE = \rinline{round(REEicuobesityFit1$se.fit[2],2)}). Among obese patients in the SDU, we estimate the mean REE to be \rinline{round(REEicuobesityFit1$fit[3],2)} (SE = \rinline{round(REEicuobesityFit1$se.fit[3],2)}). Finally, among obese patients in the ICU, we estimate the mean REE to be \rinline{round(REEicuobesityFit1$fit[4],2)} (SE = \rinline{round(REEicuobesityFit1$se.fit[4],2)}).
+
+```{r}
+% REE.icuobesity.kr <- KRmodcomp(REE.obesity1, REE.icu.obesity)
+% REE.icuobesity.kr
+```
+
+
+
+We use the Kenward--Roger adjusted F--test comparing the previously defined LMM with only the patient random effect and the obesity main effect to the model that has a random effect for patient and main effects for obesity and ICU/SDU status (alternative model) to test for a difference in REE by ICU/SDU status when adjusting for obesity.  This results in a p--value of
+\rinline{REE.icuobesity.kr$stats$p.value}.
+
+
+```{r}
+REE.icuobesity.kr2 <- KRmodcomp(REE.icu1, REE.icu.obesity)
+REE.icuobesity.kr2
+```
+
+
+
+We use the Kenward--Roger adjusted F--test comparing the LMM with only the patient random effect and the ICU/SDU main effect to the model that has a random effect for patient and main effects for obesity and ICU/SDU status (alternative model) to test for a difference in REE by obesity status when adjusting for ICU/SDU status.  This results in a p--value of
+\rinline{REE.icuobesity.kr2$stats$p.value}.
+
 
